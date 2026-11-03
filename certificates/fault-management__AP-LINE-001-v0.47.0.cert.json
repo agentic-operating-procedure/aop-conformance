@@ -1,0 +1,10 @@
+{
+  "certificate": "AOP-CONF-1.0.0/fault-management/AP-LINE-001@v0.47.0",
+  "kind": "aop-document",
+  "subject": "fault-management/AP-LINE-001@v0.47.0",
+  "subject_digest": "sha256:60dfd9c0d06a19bc5cf5058c0c6c4afb8e1bab874bd48e351e9d74135ae7844c",
+  "profile_version": "AOP-CONF-1.0.0",
+  "issued_at": "2026-11-03T23:37:57Z",
+  "verdict": "conformant",
+  "checks_passed": 12
+}

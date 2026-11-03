@@ -1,0 +1,211 @@
+{
+  "aop": "fault-management/AP-LINE-001",
+  "version": "v0.47.0",
+  "lifecycle": {
+    "specification_status": "approved",
+    "release_status": "released",
+    "operational_applicability": "effective"
+  },
+  "intent": {
+    "objective": "Restore the affected service for a reported line fault within the observed operating envelope of the fault management procedure.",
+    "outcome_condition": "The reported fault is correlated, diagnosed and either resolved or dispatched to a field crew, with the resolution recorded against the case.",
+    "scope_boundary": {
+      "in_scope": [
+        "Line faults reported on the monitored network segment",
+        "Faults triaged by the shift operations desk"
+      ],
+      "out_of_scope": [
+        "Customer premise equipment faults",
+        "Planned maintenance windows"
+      ]
+    },
+    "intent_hypothesis": "The source procedure RB-LINE-001 claims that severe faults are escalated to the shift supervisor and that loopback testing precedes dispatch. Observation tests both claims."
+  },
+  "process_alignment": {
+    "process_gap": "No canonical BusinessProcess record exists for network line fault management in the catalog yet. Lodge a process contribution (process, with activity and task decomposition) to dea-catalog-business-processes, then replace this gap with the published processes:process-* reference.",
+    "process_catalog_version": "v1-alpha",
+    "metric_refs": [
+      {
+        "name": "mean-time-to-detect",
+        "metric_ref": "dea:metric-mean-time-to-detect"
+      },
+      {
+        "name": "ai-incident-escalation-compliance",
+        "metric_ref": "dea:metric-ai-incident-escalation-compliance"
+      },
+      {
+        "name": "cell-outage-rate",
+        "metric_ref": "dea:metric-cell-outage-rate"
+      },
+      {
+        "name": "mttr-p50-minutes",
+        "gap": "No canonical dea:metric-* exists for p50 mean time to restore in network fault management. Lodge a metric contribution to dea-catalog-metrics, then bind it here."
+      },
+      {
+        "name": "first-pass-fix-rate",
+        "gap": "No canonical dea:metric-* exists for first-pass fix rate in network fault management. Lodge a metric contribution to dea-catalog-metrics, then bind it here."
+      }
+    ]
+  },
+  "context": {
+    "elements": [
+      { "name": "alarm-correlation-result", "source": "network-monitoring-platform", "access_rule": "read-only, per case" },
+      { "name": "mttr-estimate", "source": "derived from fault history for the affected segment", "access_rule": "computed at match time" },
+      { "name": "customer-tier", "source": "customer-master", "access_rule": "read-only, tier field only" },
+      { "name": "loopback-test-result", "source": "line-test-system", "access_rule": "read-write, test actions only" }
+    ],
+    "snapshot_semantics": "The case context is snapshotted at variant match time and referenced by a cg://case identifier; the snapshot is immutable for the duration of the run.",
+    "minimisation_rule": "The agent receives only the context elements its current decision requires. Message body content and keystroke data are never captured."
+  },
+  "constraints": {
+    "permitted_actions": ["correlate-alarms", "loopback-test", "dispatch-field-crew", "notify-planning"],
+    "prohibited_actions": ["modify-network-configuration", "contact-customer-directly"],
+    "fail_closed": true
+  },
+  "authority": {
+    "default_authority_class": "autonomous",
+    "risk_axes": [
+      { "axis": "risk", "assessment": "Moderate: an incorrect dispatch wastes a crew visit; an incorrect configuration change is prohibited outright." },
+      { "axis": "reversibility", "assessment": "Dispatch is reversible at crew-travel cost; notification is reversible." },
+      { "axis": "operational-impact", "assessment": "Single-case scope per run; no bulk operations permitted." },
+      { "axis": "authority-threshold", "assessment": "Escalation required above a 120 minute repair estimate, and for priority-tier customers with an active outage." },
+      { "axis": "assurance-requirement", "assessment": "Full case record with rule provenance; replay required for every dispatch." }
+    ],
+    "decision_rights_ladder": [
+      { "condition": "The action is diagnostic and read-only", "minimum_authority_class": "autonomous" },
+      { "condition": "The action dispatches external resources or the repair estimate exceeds 120 minutes", "minimum_authority_class": "approval-required" }
+    ]
+  },
+  "capabilities": {
+    "skills": [
+      { "id": "fault-management/SK-CORRELATE-ALARMS@v1.3.0", "credential_class": "monitoring-read" },
+      { "id": "fault-management/SK-LOOPBACK-TEST@v2.0.1", "credential_class": "line-test-execute" },
+      { "id": "fault-management/SK-DISPATCH-CREW@v1.1.0", "credential_class": "dispatch-write, issued only after approval" },
+      { "id": "fault-management/SK-NOTIFY-PLANNING@v1.0.0", "credential_class": "planning-write" }
+    ]
+  },
+  "coordination": {
+    "handoffs": [
+      { "from": "agent", "to": "shift-supervisor", "payload": "evidence bundle with proposed dispatch, triggering rule, provenance and baseline comparison", "acknowledgement": "approve or reject with note, recorded in the case record" },
+      { "from": "agent", "to": "planning-system", "payload": "dispatch notification with case reference", "acknowledgement": "system acknowledgement recorded in the case record" }
+    ],
+    "escalation_routes": [
+      { "authority_class": "approval-required", "target_role": "shift-supervisor", "evidence_bundle": "standard dispatch bundle per evidence-bundle.schema.json" },
+      { "authority_class": "unknown", "target_role": "on-call-engineer", "evidence_bundle": "full trace bundle with case context snapshot" }
+    ]
+  },
+  "control": {
+    "validation_obligations": [
+      "After dispatch, verify the crew acknowledgement arrives within the response window; on failure, escalate to the shift supervisor.",
+      "After a loopback test, verify the result is recorded against the case before the next step."
+    ],
+    "intervention": "The shift supervisor may pause or terminate a run at any point; pause and terminate events are recorded in the case record.",
+    "drift_obligation": "A rise in the exception rate, the appearance of a new workaround pattern, or variant frequency shifts above 10 percent relative trigger recalibration of this AOP as a new version."
+  },
+  "assurance": {
+    "case_record": {
+      "append_only": true,
+      "fields": [
+        "inputs",
+        "context snapshot",
+        "rule",
+        "provenance",
+        "decision",
+        "approver",
+        "outcome"
+      ]
+    },
+    "human_baseline": {
+      "metrics": [
+        { "metric": "mttr-p50-minutes", "observed_value": 84 },
+        { "metric": "first-pass-fix-rate", "observed_value": 0.91 }
+      ]
+    },
+    "replay": true
+  },
+  "structure": {
+    "variants": [
+      {
+        "id": "VAR-DOMINANT",
+        "name": "Standard correlate, test and resolve",
+        "frequency": 0.62,
+        "trigger": "Fault is isolated to one segment and the loopback test localises the fault",
+        "steps": [
+          "correlate-alarms",
+          "loopback-test",
+          "resolve or dispatch per decision rules",
+          "record outcome and notify planning"
+        ],
+        "decision_rules": [
+          {
+            "if": "mttr_estimate > 120",
+            "then": "escalate to shift-supervisor",
+            "authority": "approval-required",
+            "provenance": { "observed_cases": 12417, "path_frequency": 0.62 }
+          },
+          {
+            "if": "customer_tier == priority and outage == true",
+            "then": "request human approval before dispatch",
+            "authority": "approval-required",
+            "provenance": { "observed_cases": 12417, "path_frequency": 0.62 }
+          },
+          {
+            "if": "mttr_estimate <= 120 and customer_tier != priority",
+            "then": "dispatch-field-crew",
+            "authority": "autonomous",
+            "provenance": { "observed_cases": 12417, "path_frequency": 0.62 }
+          }
+        ],
+        "provenance": { "observed_cases": 12417, "path_frequency": 0.62 }
+      },
+      {
+        "id": "VAR-REWORK",
+        "name": "Cross-system inventory rework",
+        "frequency": 0.11,
+        "trigger": "inventory mismatch detected during correlation",
+        "steps": [
+          "correlate-alarms",
+          "reconcile inventory record",
+          "loopback-test",
+          "resolve or dispatch per decision rules"
+        ],
+        "decision_rules": [
+          {
+            "if": "inventory_mismatch == true",
+            "then": "reconcile inventory before loopback-test",
+            "authority": "autonomous",
+            "provenance": { "observed_cases": 12417, "path_frequency": 0.11 }
+          }
+        ],
+        "provenance": { "observed_cases": 12417, "path_frequency": 0.11 }
+      }
+    ],
+    "exception_edges": [
+      {
+        "condition": "three failed loopbacks",
+        "behaviour": "escalate",
+        "target_role": "on-call-engineer",
+        "severity": "high"
+      }
+    ],
+    "rework_loops": [
+      {
+        "return_condition": "loopback test fails and inventory was not reconciled",
+        "iteration_bound": 3,
+        "bound_exceeded_behaviour": "escalate"
+      }
+    ]
+  },
+  "provenance": {
+    "source": "cg://case/FM-2026-11-0417@2026-11-02T09:40Z",
+    "derived_from": {
+      "observed_cases": 12417,
+      "variants": 6,
+      "last_recalibrated": "2026-10-29"
+    },
+    "source_sop": "fault-management/RB-LINE-001@v12"
+  },
+  "governance": {
+    "audit": "case-record"
+  }
+}
