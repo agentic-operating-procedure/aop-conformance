@@ -4,7 +4,8 @@
   "subject": "aop-reference-harness assessing fault-management/AP-LINE-001@v0.47.0",
   "subject_digest": "sha256:045759739a4aa84e0e6efe86beb2c7857f6cb5572d23d2ccefe0b7d5a510e433",
   "profile_version": "AOP-CONF-1.0.0",
-  "issued_at": "2026-11-04T13:39:14Z",
+  "issued_at": "2026-11-04T15:16:06Z",
   "verdict": "conformant",
-  "checks_passed": 9
+  "tier": "Enforced",
+  "checks_passed": 12
 }

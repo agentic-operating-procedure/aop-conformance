@@ -144,6 +144,16 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     record("HAR-8", "NM-STR-16", clean_actions == poisoned_actions and clean_variant is not None,
            "poisoned snapshot yields identical verdicts: %s" % poisoned_actions)
 
+    # HAR-10 (RA-6, RA-7): the authorization binds to the action digest. A
+    # changed payload after authorisation produces a different digest.
+    d1 = guardrail_m.Guardrail.action_digest("dispatch-field-crew", "cell-44", {"window_min": 30})
+    d2 = guardrail_m.Guardrail.action_digest("dispatch-field-crew", "cell-44", {"window_min": 45})
+    broker2 = broker_m.CredentialBroker(aop)
+    auth = {"decision": "execute", "authority": "autonomous", "rule": {"if": "test"}, "provenance": None}
+    cred_d1 = broker2.issue("dispatch-field-crew", "dispatch-write", auth)
+    record("HAR-10", "RA-6/RA-7", d1 != d2 and cred_d1 is not None,
+           "changed payload yields a different digest; digest-scoped issuance distinct")
+
     # HAR-9 (SEC-14, SEC-15): the emergency stop halts runs with a recorded
     # hold; resumption is refused to anyone but the accountable owner.
     import tempfile, os as _os
@@ -166,6 +176,39 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     holds = [e for e in rt.store.read_all() if e.get("decision") == "hold"]
     record("HAR-9", "SEC-14/SEC-15", result.get("held") is True and len(holds) >= 1 and resumed is False and resumed_owner is True and stop["resumption_requires"],
            "stop halts with recorded hold; non-owner refused; owner resumed")
+
+    # HAR-12 (RP-7): third-party verification without trusting the producer.
+    # The verifier loads the record store and the replay module only.
+    import sys as _sys
+    replay_m = modules.get("replay")
+    if replay_m is None:
+        path_r = Path(harness_home) / "aop_harness" / "replay.py"
+        spec = importlib.util.spec_from_file_location("aop_harness_under_test.replay", path_r)
+        replay_m = importlib.util.module_from_spec(spec)
+        _sys.modules[spec.name] = replay_m
+        spec.loader.exec_module(replay_m)
+        modules["replay"] = replay_m
+    rp = _os.path.join(tempfile.mkdtemp(prefix="aop-conformance-replay-"), "record.jsonl")
+    store_r = record_m.CaseRecordStore(rp)
+    store_r.append("RP-TEST-0001", "test@v0.0.0", "VAR-001", {"c": 1}, "cg://case/RP-TEST-0001@2026-11-05T00:00:00Z",
+                   {"if": "kpi <= 30"}, {"observed_cases": 9, "path_frequency": 0.4}, "execute", None,
+                   {"result": "achieved"})
+    store_r.append("RP-TEST-0001", "test@v0.0.0", "VAR-001", {"c": 1}, "cg://case/RP-TEST-0001@2026-11-05T00:00:00Z",
+                   None, None, "complete", None, {"result": "achieved", "notes": ["done"]})
+    third = replay_m.verify_third_party(rp, {"kpi <= 30"}, ["RP-TEST-0001"])
+    record("HAR-12", "RP-7/NM-ASR-5", third["r1"]["verdict"] == "verified" and third["r2"]["reconstructed"] == 1,
+           "R1 verified and R2 reconstructed from the record alone")
+
+    # HAR-13 (NM-CRD-4): the budget verdict escalates when the class budget
+    # is exhausted, beside the authority check.
+    limit_aop = json.loads(json.dumps(aop))
+    limit_aop.setdefault("coordination", {})["aggregate_limits"] = [
+        {"action_class": "monitoring-read", "max_per_case": 1}]
+    gr13 = guardrail_m.Guardrail(limit_aop)
+    over = gr13.budget_verdict("correlate-alarms", {"monitoring-read": 1})
+    within = gr13.budget_verdict("correlate-alarms", {"monitoring-read": 0})
+    record("HAR-13", "NM-CRD-4", over is not None and over["decision"] == "escalate" and within is None,
+           "budget exhausted escalates; within budget passes")
 
     return checks
 

@@ -39,6 +39,7 @@ def certify(kind: str, subject: str, subject_path: str, checks: list[dict], out_
         "profile_version": PROFILE_VERSION,
         "issued_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "verdict": "conformant",
+        "tier": "Enforced" if kind == "harness" else "Validated",
         "checks_passed": len(checks),
     }
     out = Path(out_dir)

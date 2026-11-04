@@ -4,6 +4,17 @@ All notable changes to this repository are documented here. Format follows [Keep
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-11-05
+
+### Added (Wave H1)
+
+- HAR-10 (RA-6/7): changed payload yields a different action digest.
+- HAR-11 structural counters join the runtime stats (RA-10).
+- HAR-12 (RP-7/NM-ASR-5): R1 verified and R2 reconstructed from the record alone, third-party path.
+- HAR-13 (NM-CRD-4): budget exhausted escalates, within budget passes.
+- Certificates carry the tier: Validated for documents, Enforced for harnesses (the CR-009-7 tier vocabulary).
+
+
 ### Added (CR-009-7 decision recorded 2026-11-05)
 
 - The tier vocabulary: Validated, Enforced, Adversarially Tested, Assured as named claims over cumulative binary suite supersets; the metamodel L0 to L4 cross-maps informatively. No graduated conformance semantics.
@@ -26,6 +37,7 @@ All notable changes to this repository are documented here. Format follows [Keep
 - Published the certification process: certificates carry the profile version and the subject content digest, and lapse on any change to the artefact.
 - The reference harness and the fixture AOP document are certified under AOP-CONF-1.0.0; certificates published in certificates/.
 
-[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/agentic-operating-procedure/aop-conformance/releases/tag/v0.1.0
