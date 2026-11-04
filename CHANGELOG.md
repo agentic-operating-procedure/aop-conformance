@@ -4,6 +4,10 @@ All notable changes to this repository are documented here. Format follows [Keep
 
 ## [Unreleased]
 
+### Added (CR-009-7 decision recorded 2026-11-05)
+
+- The tier vocabulary: Validated, Enforced, Adversarially Tested, Assured as named claims over cumulative binary suite supersets; the metamodel L0 to L4 cross-maps informatively. No graduated conformance semantics.
+
 ## [0.1.1] - 2026-11-05
 
 ### Added (CR-009 block 1)

@@ -9,6 +9,19 @@ Informative. This document states how a conformance result becomes a published c
 3. **Certify.** On a full pass with the certify flag, the suite issues a certificate record: subject, subject content digest, profile version, issue date, verdict, and the count of checks passed. The certificate lands in `certificates/`.
 4. **Publish.** The certificate is the published claim. Anyone can re-verify it: recompute the digest of the subject, re-run the profile, compare.
 
+## 1a. Tiers: named claims over binary suites
+
+The suite remains binary everywhere: within any suite, every check passes or the suite fails, and no check is waiveable. Tiers are a vocabulary over suites, not a softening of them. Each tier is a cumulative superset of the one below:
+
+| Tier | Suites included | What the claim means |
+|---|---|---|
+| Validated | document profile | The artefact satisfies the schema and the normative semantic checks |
+| Enforced | + harness behavioural profile | A harness enforces the model: fail-closed, out-of-context, scoped credentials, tamper detection |
+| Adversarially Tested | + the adversarial suite (CR-009-7, block 3) | The enforcement survives hostile input: poisoned facts, authority-widening attempts, cumulative-budget breaches |
+| Assured | + lifecycle and oversight checks (CR-009-5, block 2) | The oversight and lifecycle obligations hold: SLAs, metrics, the human reservoir |
+
+A certificate states the highest tier achieved, the suites passed, the content digest, and the profile version. A tier is never granted partially: the claim is which named tier, at which digest, or nothing. The staged metamodel's per-stage levels L0 to L4 cross-map informatively to these tiers; the mapping is stated in aop-spec's metamodel mapping document, and it is a mapping, not an adoption of graduated conformance semantics.
+
 ## 2. What a certificate asserts
 
 A certificate asserts exactly this: at the issue date, the artefact with this content digest satisfied every check in profile version AOP-CONF-1.0.0. It is a point-in-time claim about a specific byte-exact artefact.
