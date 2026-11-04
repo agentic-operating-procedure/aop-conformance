@@ -4,6 +4,14 @@ All notable changes to this repository are documented here. Format follows [Keep
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-05
+
+### Added (CR-009 block 1)
+
+- HAR-8: poisoning non-attested facts cannot change a verdict (NM-STR-16).
+- HAR-9: the emergency stop halts with a recorded hold; non-owner resumption is refused (SEC-14, SEC-15).
+
+
 ## [0.1.0] - 2026-11-04
 
 ### Assurance profiles
@@ -14,5 +22,6 @@ All notable changes to this repository are documented here. Format follows [Keep
 - Published the certification process: certificates carry the profile version and the subject content digest, and lapse on any change to the artefact.
 - The reference harness and the fixture AOP document are certified under AOP-CONF-1.0.0; certificates published in certificates/.
 
-[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/agentic-operating-procedure/aop-conformance/releases/tag/v0.1.0
