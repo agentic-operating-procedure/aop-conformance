@@ -2,10 +2,10 @@
   "certificate": "AOP-CONF-1.0.0/aop-reference-harness assessing fault-management/AP-LINE-001@v0.47.0",
   "kind": "harness",
   "subject": "aop-reference-harness assessing fault-management/AP-LINE-001@v0.47.0",
-  "subject_digest": "sha256:045759739a4aa84e0e6efe86beb2c7857f6cb5572d23d2ccefe0b7d5a510e433",
+  "subject_digest": "sha256:b444b297edb685d05152c378ec88ecbe61ab25ed4c99874e97e83427730d906c",
   "profile_version": "AOP-CONF-1.0.0",
-  "issued_at": "2026-11-04T15:16:06Z",
+  "issued_at": "2026-11-04T23:28:56Z",
   "verdict": "conformant",
   "tier": "Enforced",
-  "checks_passed": 12
+  "checks_passed": 16
 }

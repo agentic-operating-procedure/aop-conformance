@@ -4,6 +4,17 @@ All notable changes to this repository are documented here. Format follows [Keep
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-11-05
+
+### Added (Wave H2)
+
+- HAR-14: the approval binds to the digest and expires.
+- HAR-15: non-response routes to the fallback as defer; an explicit defer is a ruling.
+- HAR-16: canaries are rejected by the reference policy and approving them raises the failing-approver alert.
+- HAR-17: a revoked version holds at the enforcement point with the reason recorded.
+- HAR-18: parameter tampering, unknown fields and missing required fields fail closed.
+
+
 ## [v0.2.0] - 2026-11-05
 
 ### Added (Wave H1)
@@ -37,7 +48,8 @@ All notable changes to this repository are documented here. Format follows [Keep
 - Published the certification process: certificates carry the profile version and the subject content digest, and lapse on any change to the artefact.
 - The reference harness and the fixture AOP document are certified under AOP-CONF-1.0.0; certificates published in certificates/.
 
-[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/agentic-operating-procedure/aop-conformance/releases/tag/v0.1.0

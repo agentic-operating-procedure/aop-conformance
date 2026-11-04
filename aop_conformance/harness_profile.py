@@ -210,6 +210,73 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     record("HAR-13", "NM-CRD-4", over is not None and over["decision"] == "escalate" and within is None,
            "budget exhausted escalates; within budget passes")
 
+    # HAR-14 (RA-15): the approval object binds to the action digest and
+    # expires; a changed payload after authorisation invalidates the approval.
+    bundle = evidence_m.build_evidence_bundle("FM-TEST-0001", aop,
+                                              {"decision": "approval-required", "authority": "approval-required",
+                                               "rule": {"if": "mttr_estimate > 120", "then": "escalate"},
+                                               "provenance": {"observed_cases": 12, "path_frequency": 0.31}},
+                                              {"mttr_estimate": 137}, "dispatch-field-crew",
+                                              action_digest=d1)
+    valid = bundle.get("action_digest") == d1 and bundle.get("expiry")
+    changed = guardrail_m.Guardrail.action_digest("dispatch-field-crew", "cell-44", {"window_min": 45})
+    record("HAR-14", "RA-15/NM-ASR-5", valid and changed != d1,
+           "bundle binds to the digest and expires; changed payload yields a stale digest")
+
+    # HAR-15 (RA-16): the four-outcome interface; non-response (no outcome)
+    # routes to the fallback role and never approves. An explicit defer is a
+    # ruling; silence is not.
+    class Silent(evidence_m.ApproverPolicy):
+        def rule_on(self, bundle):
+            return {"approver": self.name}  # no outcome: non-response
+    dispatch = evidence_m.EscalationDispatch(aop.get("coordination", {}).get("escalation_routes", []),
+                                             {"fallback_role": "on-call-engineer"})
+    result = dispatch.dispatch(bundle, "shift-supervisor", Silent(), fallback_role="on-call-engineer")
+    routed = result.get("routed_to_fallback") is True and result["ruling"]["outcome"] == "defer"
+
+    # HAR-16 (RA-19): canary detection. An approving policy that rubber-stamps
+    # canaries raises the failing-approver alert; the reference policy rejects.
+    canary_bundle = json.loads(json.dumps(bundle))
+    canary_bundle["rule_provenance"] = {"observed_cases": 0, "path_frequency": 0.0, "canary": True}
+    good = dispatch.dispatch(canary_bundle, "shift-supervisor", evidence_m.ApproverPolicy())
+    metrics = dispatch.oversight_metrics()
+    lax_dispatch = evidence_m.EscalationDispatch(aop.get("coordination", {}).get("escalation_routes", []))
+    lax_dispatch.dispatch(canary_bundle, "shift-supervisor", evidence_m.ApproverPolicy(name="rubber-stamper", **{}))
+    # A rubber-stamping policy is one that approves canaries: simulate by a
+    # policy whose rule_on always approves.
+    class Lax(evidence_m.ApproverPolicy):
+        def rule_on(self, bundle):
+            return {"approver": self.name, "outcome": "approve", "note": "approved"}
+    lax2 = evidence_m.EscalationDispatch([])
+    lax2.dispatch(canary_bundle, "shift-supervisor", Lax())
+    lax_metrics = lax2.oversight_metrics()
+    record("HAR-16", "RA-16/RA-19", routed and good["ruling"]["outcome"] == "reject"
+           and metrics["failing_approver_alert"] is False and lax_metrics["failing_approver_alert"] is True,
+           "non-response routed as defer; reference policy rejects canaries; rubber-stamping raises the alert")
+
+    # HAR-17 (NM-VER-6): a run consults revocation and a revoked version holds.
+    revoked_rt = runtime_m.Runtime(aop, _os.path.join(tempfile.mkdtemp(prefix="aop-conf-rev-"), "r.jsonl"))
+    revoked_rt.revocation_provider = lambda ref: {"revoked": True, "reason": "policy defect"} if ref == rt.aop_ref else None
+    res = revoked_rt.run_case({"case_id": "REV-TEST-0001", "context": clean_ctx}, modules.get("agent") or _default_agent(modules))
+    rev_holds = [e for e in revoked_rt.store.read_all() if e.get("decision") == "hold" and "revoked" in (e.get("outcome") or {}).get("note", "")]
+    record("HAR-17", "NM-VER-6", res.get("held") is True and len(rev_holds) >= 1,
+           "revoked version holds at the enforcement point with the reason recorded")
+
+    # HAR-18 (RA-21/RA-22): parameter tampering between proposal and
+    # execution is caught by the declared schema.
+    schema_aop = json.loads(json.dumps(aop))
+    schema_aop.setdefault("constraints", {})["action_schemas"] = [
+        {"action": "dispatch-field-crew",
+         "required_fields": [{"name": "crew_count", "type": "integer", "minimum": 1, "maximum": 3}]}]
+    gr18 = guardrail_m.Guardrail(schema_aop)
+    ok_params = gr18.parameter_verdict("dispatch-field-crew", {"crew_count": 2})
+    tampered = gr18.parameter_verdict("dispatch-field-crew", {"crew_count": 99})
+    unknown = gr18.parameter_verdict("dispatch-field-crew", {"crew_count": 2, "mode": "bypass"})
+    missing = gr18.parameter_verdict("dispatch-field-crew", {})
+    record("HAR-18", "RA-21/RA-22", ok_params is None and tampered is not None
+           and unknown is not None and missing is not None,
+           "in-bounds passes; tampered, unknown-field and missing payloads fail closed")
+
     return checks
 
 

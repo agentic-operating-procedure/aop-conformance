@@ -7,7 +7,7 @@
 | Authority | Whether a document or a harness conforms: profiles, suite, fixtures, certification |
 | Tier | Assurance |
 | Landing wave | 5 |
-| Version | 0.2.0 |
+| Version | 0.3.0 |
 | Status | Stable |
 | Licence | MIT |
 

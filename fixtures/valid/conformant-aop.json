@@ -92,7 +92,34 @@
       "modify-network-configuration",
       "contact-customer-directly"
     ],
-    "fail_closed": true
+    "fail_closed": true,
+    "action_schemas": [
+      {
+        "action": "dispatch-field-crew",
+        "required_fields": [
+          {
+            "name": "crew_count",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          {
+            "name": "priority",
+            "type": "string",
+            "allowed_values": [
+              "normal",
+              "high"
+            ]
+          },
+          {
+            "name": "target_cell",
+            "type": "string",
+            "target_scope": "one cell per case"
+          }
+        ],
+        "prohibited_values": []
+      }
+    ]
   },
   "authority": {
     "default_authority_class": "autonomous",
@@ -128,7 +155,26 @@
         "minimum_authority_class": "approval-required"
       }
     ],
-    "minimum_support": 1000
+    "minimum_support": 1000,
+    "reversibility_classes": [
+      {
+        "action": "correlate-alarms",
+        "class": "reversible"
+      },
+      {
+        "action": "loopback-test",
+        "class": "reversible"
+      },
+      {
+        "action": "dispatch-field-crew",
+        "class": "compensable",
+        "compensation_path": "recall the crew and revert the dispatch ticket; cost is the truck roll"
+      },
+      {
+        "action": "notify-planning",
+        "class": "reversible"
+      }
+    ]
   },
   "capabilities": {
     "skills": [
@@ -178,6 +224,13 @@
         "target_role": "on-call-engineer",
         "evidence_bundle": "full trace bundle with case context snapshot"
       }
+    ],
+    "aggregate_limits": [
+      {
+        "action_class": "dispatch-write",
+        "max_per_case": 1,
+        "blast_radius_cap": "one crew per case"
+      }
     ]
   },
   "control": {
@@ -213,7 +266,13 @@
         }
       ]
     },
-    "replay": true
+    "replay": true,
+    "replay_level": "R2",
+    "oversight": {
+      "sla_seconds": 900,
+      "fallback_role": "on-call-engineer",
+      "canary_rate": 0.05
+    }
   },
   "structure": {
     "variants": [
