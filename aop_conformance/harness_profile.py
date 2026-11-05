@@ -23,6 +23,11 @@ def _load_harness(harness_home: str):
     home = Path(harness_home)
     package = types.ModuleType("aop_harness_under_test")
     package.__path__ = [str(home / "aop_harness")]
+    # The runtime imports the package __version__; supply it from the source.
+    init_text = (home / "aop_harness" / "__init__.py").read_text()
+    import re as _re
+    match = _re.search(r'__version__\s*=\s*"([^"]+)"', init_text)
+    package.__version__ = match.group(1) if match else "0.0.0"
     sys.modules["aop_harness_under_test"] = package
     modules = {}
     for name in ("expression", "guardrail", "broker", "caserecord", "evidence"):
@@ -170,7 +175,7 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     stop_path = _os.path.join(tempfile.mkdtemp(prefix="aop-conformance-stop-"), "record.jsonl")
     rt = runtime_m.Runtime(aop, stop_path)
     stop = rt.emergency_stop("shift-supervisor")
-    result = rt.run_case({"case_id": "STOP-TEST-0001", "context": clean_ctx}, modules.get("agent") or _default_agent(modules))
+    result = rt.run_case({"case_id": "STOP-TEST-0001", "context": clean_ctx}, _default_agent(modules))
     resumed = rt.resume("shift-supervisor")
     resumed_owner = rt.resume(aop.get("governance", {}).get("accountable_owner", "owner"))
     holds = [e for e in rt.store.read_all() if e.get("decision") == "hold"]
@@ -257,7 +262,7 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     # HAR-17 (NM-VER-6): a run consults revocation and a revoked version holds.
     revoked_rt = runtime_m.Runtime(aop, _os.path.join(tempfile.mkdtemp(prefix="aop-conf-rev-"), "r.jsonl"))
     revoked_rt.revocation_provider = lambda ref: {"revoked": True, "reason": "policy defect"} if ref == rt.aop_ref else None
-    res = revoked_rt.run_case({"case_id": "REV-TEST-0001", "context": clean_ctx}, modules.get("agent") or _default_agent(modules))
+    res = revoked_rt.run_case({"case_id": "REV-TEST-0001", "context": clean_ctx}, _default_agent(modules))
     rev_holds = [e for e in revoked_rt.store.read_all() if e.get("decision") == "hold" and "revoked" in (e.get("outcome") or {}).get("note", "")]
     record("HAR-17", "NM-VER-6", res.get("held") is True and len(rev_holds) >= 1,
            "revoked version holds at the enforcement point with the reason recorded")
@@ -276,6 +281,60 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     record("HAR-18", "RA-21/RA-22", ok_params is None and tampered is not None
            and unknown is not None and missing is not None,
            "in-bounds passes; tampered, unknown-field and missing payloads fail closed")
+
+    # HAR-19 (SEC-16): a credential presented by a different workload is refused.
+    wl_rt = runtime_m.Runtime(aop, _os.path.join(tempfile.mkdtemp(prefix="aop-conf-wl-"), "r.jsonl"))
+    case = {"case_id": "WL-TEST-0001", "context": clean_ctx}
+    wl_rt.run_case(case, _default_agent(modules))
+    entry = wl_rt.store.read_all()[0]
+    matrix_ok = entry.get("component_matrix", {}).get("workload_id") == wl_rt.workload_id
+    cred = wl_rt.broker.issue("correlate-alarms", "monitoring-read", auth)
+    cred["workload_id"] = wl_rt.workload_id
+    same_wl = wl_rt.broker.validate(cred, "correlate-alarms", workload=wl_rt.workload_id)
+    other_wl = wl_rt.broker.validate(cred, "correlate-alarms", workload="wl-attacker")
+    record("HAR-19", "SEC-16", matrix_ok and same_wl and not other_wl,
+           "component matrix carries the workload; cross-workload credential use refused")
+
+    # HAR-20 (NM-VER-8): the component matrix in the record covers the
+    # behaviour-affecting components.
+    cm = entry.get("component_matrix", {})
+    record("HAR-20", "NM-VER-8/CC-32", all(k in cm for k in ("harness", "aop_ref", "workload_id", "policy_bundle")),
+           "component matrix: " + json.dumps({k: str(v)[:30] for k, v in cm.items()}))
+
+    # HAR-21 (CR-025): an incident holds the domain; recovery requires the
+    # integrity check and the owner.
+    inc_rt = runtime_m.Runtime(aop, _os.path.join(tempfile.mkdtemp(prefix="aop-conf-ir-"), "r.jsonl"))
+    inc_rt.declare_incident("credential-compromise", "high", "security-officer")
+    res = inc_rt.run_case({"case_id": "IR-TEST-0001", "context": clean_ctx}, _default_agent(modules))
+    bad = inc_rt.recover("security-officer")
+    good = inc_rt.recover(aop.get("governance", {}).get("accountable_owner", "owner"))
+    record("HAR-21", "CR-025", res.get("held") is True and bad["resumed"] is False and good["resumed"] is True,
+           "incident holds runs; non-owner recovery refused; owner recovery succeeds on intact chain")
+
+    # HAR-22 (NM-ASR-7): erasure shreds the externalised payload, appends the
+    # tombstone, preserves the chain, and narrows the replay claim explicitly.
+    from aop_harness_under_test.erasure import shred_case as _shred
+    path_e = _os.path.join(tempfile.mkdtemp(prefix="aop-conf-er-"), "r.jsonl")
+    er_rt = runtime_m.Runtime(aop, path_e, payload_store_path=path_e + ".payloads")
+    er_rt.run_case({"case_id": "ER-TEST-0001", "context": clean_ctx}, _default_agent(modules))
+    erasure = _shred(er_rt.store, "ER-TEST-0001", "data subject request", "privacy-officer")
+    intact_e, _ = er_rt.store.verify_chain()
+    tombstoned = any(e.get("decision") == "erasure-tombstone" for e in er_rt.store.read_all())
+    record("HAR-22", "NM-ASR-7/CC-34", erasure["erased_payloads"] and intact_e and tombstoned,
+           "payload shredded, tombstone appended, chain intact: %d payload(s) erased" % len(erasure["erased_payloads"]))
+
+    # HAR-23 (RA-23): migration appends a linked marker on the original record
+    # and never rewrites it; the original entries are byte-identical before
+    # and after except for the appended marker.
+    mig_rt = runtime_m.Runtime(aop, _os.path.join(tempfile.mkdtemp(prefix="aop-conf-mig-"), "r.jsonl"))
+    mig_case = {"case_id": "MIG-TEST-0001", "context": clean_ctx}
+    mig_rt.run_case(mig_case, _default_agent(modules))
+    before = json.dumps(mig_rt.store.read_all(), sort_keys=True)
+    marker = mig_rt.record_migration("MIG-TEST-0001", "MIG-TEST-0002", "policy defect in the bound version")
+    after_entries = mig_rt.store.read_all()
+    prefix_identical = json.dumps(after_entries[:-1], sort_keys=True) == before
+    record("HAR-23", "RA-23", marker.get("decision") == "migrated" and prefix_identical,
+           "migration marker appended; original entries untouched")
 
     return checks
 
