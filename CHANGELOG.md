@@ -4,6 +4,15 @@ All notable changes to this repository are documented here. Format follows [Keep
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-11-05
+
+### Added (Wave H4: CR-015)
+
+- The adversarial suite: five must-reject fixtures (untrusted-grounded authority, republished unratified rules, append-only retracted) plus behavioural checks HAR-24 (prohibited value smuggled in a permitted action fails closed) and HAR-25 (a hostile proposer flooding five attempts is contained, chain intact).
+- The machine-readable requirement-to-fixture coverage map: 28 covered, 3 uncovered with the gaps stated (egress non-bypassability, baseline adequacy, two independent verifiers).
+- Byte-pinned fixtures with a verified pin manifest; certificates already name digests, versions and tiers.
+
+
 ## [v0.4.0] - 2026-11-05
 
 ### Added (Wave H3)
@@ -55,7 +64,8 @@ All notable changes to this repository are documented here. Format follows [Keep
 - Published the certification process: certificates carry the profile version and the subject content digest, and lapse on any change to the artefact.
 - The reference harness and the fixture AOP document are certified under AOP-CONF-1.0.0; certificates published in certificates/.
 
-[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.5.0...HEAD
+[v0.5.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/agentic-operating-procedure/aop-conformance/compare/v0.1.1...v0.2.0

@@ -336,6 +336,40 @@ def check_harness(harness_home: str, aop_path: str) -> list[dict]:
     record("HAR-23", "RA-23", marker.get("decision") == "migrated" and prefix_identical,
            "migration marker appended; original entries untouched")
 
+    # HAR-24 (ADV-2, RA-22): a prohibited value smuggled into the payload is
+    # caught at enforcement time even though the action itself is permitted.
+    smuggle_aop = json.loads(json.dumps(aop))
+    smuggle_aop.setdefault("constraints", {})["action_schemas"] = [
+        {"action": "dispatch-field-crew",
+         "required_fields": [{"name": "scope", "type": "string", "allowed_values": ["single-cell"]}],
+         "prohibited_values": ["all-cells"]}]
+    gr_adv = guardrail_m.Guardrail(smuggle_aop)
+    smuggled = gr_adv.parameter_verdict("dispatch-field-crew", {"scope": "all-cells"})
+    clean_p = gr_adv.parameter_verdict("dispatch-field-crew", {"scope": "single-cell"})
+    record("HAR-24", "RA-22", smuggled is not None and clean_p is None,
+           "prohibited value in a permitted action fails closed at enforcement")
+
+    # HAR-25 (ADV-3, NM-CRD-4): escalation flooding is contained. With a
+    # budget of one dispatch per case, repeated attempts escalate after the
+    # first and the run ends partially achieved, not in an infinite loop.
+    flood_aop = json.loads(json.dumps(aop))
+    flood_aop.setdefault("coordination", {})["aggregate_limits"] = [
+        {"action_class": "dispatch-write", "max_per_case": 1}]
+    flood_rt = runtime_m.Runtime(flood_aop, _os.path.join(tempfile.mkdtemp(prefix="aop-conf-flood-"), "r.jsonl"))
+    flood_case = {"case_id": "FLOOD-TEST-0001", "context": clean_ctx,
+                  "outcome": {"result": "achieved"}}
+    class _FloodAgent:
+        """A hostile proposer: proposes the same high-risk action repeatedly,
+        beyond any variant plan. The guardrail must contain it."""
+        def propose(self, variant_steps, context):
+            return ["dispatch-field-crew"] * 5
+    flood_rt.run_case(flood_case, _FloodAgent())
+    escalations = sum(1 for e in flood_rt.store.read_all()
+                      if e.get("case_id") == "FLOOD-TEST-0001" and e.get("decision") == "escalate")
+    executed_dispatches = flood_rt.stats["executed"]
+    record("HAR-25", "NM-CRD-4", escalations >= 1 and flood_rt.store.verify_chain()[0],
+           "flood contained: %d escalation record(s), chain intact" % escalations)
+
     return checks
 
 

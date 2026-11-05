@@ -1,0 +1,17 @@
+{
+  "fixture_pin_manifest": {
+    "purpose": "Byte pinning (CR-015): a verifier checks fixture digests before running the suite, so a modified fixture cannot silently pass or fail.",
+    "algorithm": "sha256",
+    "fixtures": {
+      "fixtures/invalid/autonomous-rule-without-provenance.json": "sha256:4f135ccd17b96d45b0cf6f32e4e994f9f3a0cfe74d464c5f8a8c98b328841520",
+      "fixtures/invalid/fail-closed-disabled.json": "sha256:5b91c9367e6f10007b9c47dd65b8b28458499d0d9649c270e3611e29c0c25683",
+      "fixtures/invalid/missing-assurance.json": "sha256:3d727dc6f7753af1fcc4d1d8a23938040ac4058ee1b378923210ba87a49057d3",
+      "fixtures/invalid/prose-threshold-rule.json": "sha256:cee91693124097a8173a73e5c4f12928ad9960b8b435177199ec12c0bde00a9f",
+      "fixtures/invalid/zero-observed-cases.json": "sha256:8a93e1430a29076060adfb815bc9b6c82ce6444255849a90d76f6e2e69e33351",
+      "fixtures/adversarial/adv-1-untrusted-grounded-authority.json": "sha256:82ff4bdbb4b477223642e1a8ac3ecd4937c2b0ed6f9988cba5a8b4f1ecddf021",
+      "fixtures/adversarial/adv-4-republished-unratified.json": "sha256:d4c7e313344e1cf0cda28f045b842140f3d6265bcfd570d4bced892293754672",
+      "fixtures/adversarial/adv-5-append-only-retracted.json": "sha256:289fd8592bfb5c4bc08301792379d0373750f0635075a1670215c7fefcbe5533",
+      "fixtures/valid/conformant-aop.json": "sha256:b444b297edb685d05152c378ec88ecbe61ab25ed4c99874e97e83427730d906c"
+    }
+  }
+}
